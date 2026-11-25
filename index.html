@@ -163,6 +163,21 @@ body{padding:0 0 80px 0}
 .risk-h{font-size:.84rem;font-weight:700;color:var(--accent-text);margin-bottom:8px}
 .risk-p{font-size:.8rem;line-height:1.75;margin:0 0 6px;color:var(--text);text-align:justify}
 .risk-note{font-size:.7rem;color:var(--text2);line-height:1.7;padding:4px 4px 8px}
+.menu-item{border:1px solid var(--border);border-radius:14px;margin-top:10px;background:var(--surface);overflow:hidden}
+.menu-item summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.menu-item summary::-webkit-details-marker{display:none}
+.menu-title{font-weight:700;font-size:.88rem;color:var(--text)}
+.menu-sub{font-size:.68rem;color:var(--text2);margin-top:3px;line-height:1.5}
+.menu-badge{font-size:.66rem;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(95,143,90,.16);color:var(--ok);white-space:nowrap}
+.menu-badge.warn{background:rgba(194,138,26,.16);color:var(--warn)}
+.menu-body{padding:0 14px 14px}
+.menu-tbl{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:6px}
+.menu-tbl th{font-size:.66rem;font-weight:500;color:var(--text2);text-align:right;padding:4px 0;border-bottom:1px solid var(--border)}
+.menu-tbl th:first-child,.menu-tbl td:first-child{text-align:left}
+.menu-tbl td{padding:5px 0;border-bottom:1px dashed var(--border);text-align:right;font-variant-numeric:tabular-nums}
+.menu-h{font-size:.72rem;font-weight:700;color:var(--accent-text);margin-top:12px}
+.menu-note{font-size:.7rem;color:var(--text2);line-height:1.65;margin-top:8px}
+.menu-btn{margin-top:12px;width:100%;padding:10px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;font-family:inherit;font-size:.8rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -187,6 +202,7 @@ const IC={
  star:'<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/>',
  drop:'<path d="M12 3s6.5 6.6 6.5 11a6.5 6.5 0 0 1-13 0C5.5 9.6 12 3 12 3z"/>',
  shield:'<path d="M12 3l8 3v5.5c0 4.5-3.2 8-8 9.5-4.8-1.5-8-5-8-9.5V6z"/><path d="M12 8.5v4M12 15.5v.1"/>',
+ utensils:'<path d="M7 3v7M4 3v4.5a3 3 0 0 0 6 0V3M7 10v11M17 21V3c-2.6 1.6-3.2 4.8-3.2 8.5H17"/>',
  hex:'<path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/><circle cx="12" cy="12" r="2.4"/>'
 };
 function ic(n,c){return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"'+(c?' style="color:'+c+'"':'')+'>'+IC[n]+'</svg>';}
@@ -268,6 +284,12 @@ function ic(n,c){return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"'
       <div class="prog-wrap"><div class="prog-fill" id="compFill"></div></div>
       <div class="rer-note" id="compNote"></div>
     </div>
+  </div>
+  <div class="card" id="menuCard" style="display:none">
+    <div class="card-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v7M4 3v4.5a3 3 0 0 0 6 0V3M7 10v11M17 21V3c-2.6 1.6-3.2 4.8-3.2 8.5H17"/></svg>建議菜單</div>
+    <div class="rer-desc" id="menuSub"></div>
+    <div id="menuList"></div>
+    <div class="menu-note" id="menuFoot"></div>
   </div>
 </div>
 
@@ -24342,13 +24364,13 @@ function getWasteRate(item) {
 
 let currentDER=0,globalPetME=0,globalHumanME=0,cart=[];
 
-function computeRiskData(){
+function computeRiskData(opts){
   // ── 讀取寵物資料（與 APP 同步）──────────────────────────────
   const sp  = document.getElementById('petSpecies').value;
   const wt  = parseFloat(document.getElementById('petWeight').value) || 0;
   const neu = document.getElementById('petNeuter').value;
-  const stdStage  = document.getElementById('stdStage')  ? document.getElementById('stdStage').value  : 'adult';
-  const stdSource = document.getElementById('stdSource') ? document.getElementById('stdSource').value : 'AAFCO';
+  const stdStage  = (opts && opts.stage)  || (document.getElementById('stdStage')  ? document.getElementById('stdStage').value  : 'adult');
+  const stdSource = (opts && opts.source) || (document.getElementById('stdSource') ? document.getElementById('stdSource').value : 'AAFCO');
 
   if (!wt) return null;
   const stage  = stdStage;   // AAFCO 陣列使用的別名
@@ -24565,7 +24587,7 @@ function computeRiskData(){
   const speciesStr = sp === 'dog' ? '犬' : '貓';
   const ca_dm = dmVal('鈣(mg)'), p_dm = dmVal('磷(mg)'), vitA_dm = dmVal('維生素A總量(IU)');
   const caroIU_dm = dmVal('β-胡蘿蔔素(ug)')/0.6 + dmVal('α-胡蘿蔔素(ug)')/1.2;
-  return { speciesStr, cf, compRows, ca_dm, p_dm, vitA_dm, caroIU_dm, grpCnt };
+  return { speciesStr, cf, compRows, ca_dm, p_dm, vitA_dm, caroIU_dm, grpCnt, SUPP, totalDMkg, totalPme, totalEP, nutrTotals };
 }
 
 function renderRisk(){
@@ -24632,6 +24654,186 @@ function renderRisk(){
   el.innerHTML=h;
 }
 
+// ═══════════════ 建議菜單 ═══════════════
+const MENU_KEYS=['粗蛋白(g)','粗脂肪(g)','精胺酸(Arg)(mg)','組胺酸(His)(mg)','異白胺酸(Ile)(mg)','白胺酸(Leu)(mg)','離胺酸(Lys)(mg)','甲硫胺酸(Met)(mg)','苯丙胺酸(Phe)(mg)','酥胺酸(Thr)(mg)','色胺酸(Trp)(mg)','纈胺酸(Val)(mg)','亞麻油酸(18:2)(mg)','花生油酸(20:4)(mg)','鈣(mg)','磷(mg)','鉀(mg)','鈉(mg)','鎂(mg)','鐵(mg)','銅(mg)','錳(mg)','鋅(mg)','維生素A總量(IU)','維生素D總量(IU)','維生素E總量(mg)','維生素B1(mg)','維生素B2(mg)','菸鹼素(mg)','維生素B6(mg)','葉酸(ug)','維生素B12(ug)'];
+// 可由補充劑補足的營養素（與報告「補充劑處方」一致）
+const MENU_SUPPK=new Set(['鈣(mg)','鋅(mg)','銅(mg)','錳(mg)','維生素D總量(IU)','維生素E總量(mg)','維生素B1(mg)','維生素B2(mg)','菸鹼素(mg)','維生素B6(mg)','葉酸(ug)','維生素B12(ug)','亞麻油酸(18:2)(mg)','鈉(mg)']);
+// 報告補充劑表未涵蓋、但可用食鹽補足的鈉
+const MENU_EXTRA_SUPP={'鈉(mg)':{cmp:'食鹽（氯化鈉）NaCl',pur:0.393,nt:'拌入餐食；勿另加調味料'}};
+// 食材優先、仍不足時才補的礦物質（成長／繁殖期標準較高時才會出現）
+const MENU_FALLBACK={
+  '磷(mg)':{cmp:'磷酸氫鈣 CaHPO₄·2H₂O',pur:0.18,ca:0.233,nt:'同時提供鈣（約 23%）；已自碳酸鈣用量扣除'},
+  '鐵(mg)':{cmp:'硫酸亞鐵 FeSO₄·7H₂O',pur:0.201,nt:'依處方量使用，勿自行加量（鐵過量有毒性）'},
+  '鎂(mg)':{cmp:'氧化鎂 MgO',pur:0.60,nt:''}
+};
+// 每款菜單：items=[食材ID, 起始比重, 占總重下限%, 占總重上限%, 顯示名稱]
+const MENU_DEFS={
+  dog:[
+    {name:'雞肉地瓜餐',sub:'清淡好消化',items:[['I0402402',45,20,65,'雞胸肉'],['I0320801',3,1,6,'豬肝'],['I0420301',2,0,3,'雞肝'],['B0400401',30,8,45,'紅肉地瓜'],['E5800402',10,2,10,'青花菜'],['E5000101',3,0,8,'菠菜'],['E0200101',6,0,12,'胡蘿蔔'],['M2700101',2,0,4,'橄欖油']]},
+    {name:'牛肉馬鈴薯餐',sub:'高鐵紅肉配方',items:[['I0108101',40,18,60,'牛後腿肉'],['I0320801',4,1,6,'豬肝'],['B0700201',30,8,45,'馬鈴薯'],['E5000101',8,2,8,'菠菜'],['E63001',10,0,16,'南瓜'],['M2700101',2,0,4,'橄欖油']]},
+    {name:'鮭魚糙米餐',sub:'富含 Omega-3',items:[['J0402401',35,15,55,'鮭魚'],['I0320801',3,1,6,'豬肝'],['I0420301',2,0,3,'雞肝'],['A0501401',16,5,24,'糙米（生重）'],['E7100201',18,3,20,'綠櫛瓜'],['E5800402',8,2,10,'青花菜'],['E5000101',3,0,8,'菠菜'],['K01001',8,0,14,'雞蛋']]},
+    {name:'火雞蛋燕麥餐',sub:'低敏單純配方',items:[['I0700101',38,18,60,'火雞肉'],['K01001',10,0,15,'雞蛋'],['A0800101',14,4,22,'燕麥（生重）'],['E63001',16,0,16,'南瓜'],['E5000101',8,1,8,'菠菜'],['I0420301',3,1,6,'雞肝'],['M2700101',2,0,4,'橄欖油']]},
+    {name:'豬肉鱸魚雙拼餐',sub:'雙蛋白來源',items:[['I0302201',28,12,45,'豬後腿肉'],['J04044',20,8,32,'花鱸魚'],['I0320801',3,1,6,'豬肝'],['B0400401',24,6,38,'紅肉地瓜'],['E7100201',12,2,20,'綠櫛瓜'],['E0200101',8,0,12,'胡蘿蔔'],['M2700101',1.5,0,4,'橄欖油']]}
+  ],
+  cat:[
+    {name:'雞肉肝心餐',sub:'全雞部位組合',items:[['I0402401',58,30,75,'雞肉（去皮）'],['I0420101',12,4,26,'雞心'],['I0420301',3,1,5,'雞肝'],['I0320801',3,1,8,'豬肝'],['K01081',4,0,8,'蛋黃'],['E5000101',2,0,6,'菠菜'],['E63001',6,0,12,'南瓜']]},
+    {name:'鮭魚鴨肉餐',sub:'海陸雙蛋白',items:[['J0402401',28,12,45,'鮭魚'],['I0500401',32,15,55,'鴨肉'],['I0320801',4,1,8,'豬肝'],['I0420101',8,0,20,'雞心'],['K01001',10,0,15,'雞蛋'],['E63001',8,0,14,'南瓜']]},
+    {name:'鴨肉雞心餐',sub:'高蛋白鴨肉配方',items:[['I0500401',45,20,65,'鴨肉'],['I0420101',15,4,22,'雞心'],['I0420301',5,2,7,'雞肝'],['E5800402',8,0,10,'青花菜'],['K01001',8,0,14,'雞蛋']]},
+    {name:'火雞蛋黃餐',sub:'低脂高蛋白',items:[['I0700101',50,25,70,'火雞肉'],['K01081',8,0,12,'蛋黃'],['I0420301',3,1,5,'雞肝'],['I0320801',3,1,8,'豬肝'],['I0420101',10,3,18,'雞心'],['E7100201',10,0,14,'綠櫛瓜']]},
+    {name:'牛肉豬肝餐',sub:'高鐵紅肉配方',items:[['I0108101',45,20,60,'牛後腿肉'],['I0420101',12,4,18,'雞心'],['I0320801',4,1,5,'豬肝'],['K01001',10,0,15,'雞蛋'],['B0400401',8,0,12,'紅肉地瓜']]}
+  ]
+};
+const MENU_MAP=new Map(FOOD_DATA.map(f=>[f.id,f]));
+function menuStdOf(sp,stage,source){return (STANDARDS[sp]&&STANDARDS[sp][stage]&&STANDARDS[sp][stage][source])||{};}
+// 輕量評估：依與報告相同的規則（每 kgDM、能量密度校正 cf）計算不足／超量懲罰
+function menuPenalty(foods,grams,std,isCat){
+  let ep=0,water=0,prot=0,fat=0,carb=0,ret=0;const tot={};
+  for(let i=0;i<foods.length;i++){
+    const n=foods[i].n,r=grams[i]/100,g=k=>typeof n[k]==='number'?n[k]:0;
+    ep+=grams[i];water+=g('水分(g)')*r;prot+=g('粗蛋白(g)')*r;fat+=g('粗脂肪(g)')*r;carb+=g('總碳水化合物(g)')*r;ret+=g('視網醇(ug)')*r;
+    for(const k of MENU_KEYS)tot[k]=(tot[k]||0)+g(k)*r;
+  }
+  const dm=(ep-water)/1000;if(dm<=0)return 1e6;
+  const pk=(prot*3.5+fat*8.5+carb*3.5)/dm,cf=pk>4000?pk/4000:1;
+  let pen=0;
+  for(const k of MENU_KEYS){
+    const s=std[k];if(!s)continue;const act=tot[k]/dm;
+    if(s.min&&!MENU_SUPPK.has(k)){
+      let a=act;
+      if(isCat&&k==='維生素A總量(IU)')a=Math.min(a,ret/0.3/dm); // 貓無法轉換 β-胡蘿蔔素，只計視網醇
+      pen+=(MENU_FALLBACK[k]?0.25:1)*Math.max(0,1.06-a/(s.min*cf));
+    }
+    if(s.max&&act>s.max*0.97)pen+=3*(act/(s.max*0.97)-1);
+  }
+  return pen;
+}
+function menuPme(foods,w){
+  let pme=0;
+  for(let i=0;i<foods.length;i++){
+    const n=foods[i].n,g=k=>typeof n[k]==='number'?n[k]:0;
+    pme+=w[i]/100*(g('粗蛋白(g)')*3.5+g('粗脂肪(g)')*8.5+g('總碳水化合物(g)')*3.5);
+  }
+  return pme;
+}
+function menuSolve(def,ctx){
+  const foods=def.items.map(it=>MENU_MAP.get(it[0]));
+  if(foods.some(f=>!f))return null;
+  const w0=def.items.map(it=>it[1]),lo=def.items.map(it=>it[2]),hi=def.items.map(it=>it[3]);
+  const gramsOf=w=>{const k=ctx.der/menuPme(foods,w);return w.map(x=>x*k);};
+  const score=w=>{
+    let reg=0;for(let i=0;i<w.length;i++){const l=Math.log(w[i]/w0[i]);reg+=l*l;}
+    return menuPenalty(foods,gramsOf(w),ctx.std,ctx.isCat)+0.02*reg;
+  };
+  const ok=w=>{const t=w.reduce((a,b)=>a+b,0);return w.every((x,i)=>x/t*100>=lo[i]-1e-9&&x/t*100<=hi[i]+1e-9);};
+  let w=w0.slice(),best=score(w),step=0.3;
+  for(let it=0;it<400&&step>0.004;it++){
+    let bm=null;
+    for(let i=0;i<w.length;i++)for(const d of [1,-1]){
+      const w2=w.slice();w2[i]=Math.max(0.05,w2[i]*(1+d*step));
+      if(!ok(w2))continue;
+      const sc=score(w2);
+      if(sc<best-1e-9&&(!bm||sc<bm.sc))bm={w2,sc};
+    }
+    if(bm){w=bm.w2;best=bm.sc;}else step/=2;
+  }
+  return {foods,grams:gramsOf(w)};
+}
+function menuRound(g){return g>=20?Math.round(g):g>=5?Math.round(g*2)/2:Math.round(g*10)/10;}
+function menuEvalFull(foods,grams,opts){
+  const saved=cart;
+  cart=foods.map((f,i)=>({...f,grams:grams[i],mode:'g',servings:1,ex:null,color:'#c49a73',apMode:false,wasteRate:0}));
+  try{return computeRiskData(opts);}finally{cart=saved;}
+}
+// 補充劑：與報告「補充劑處方」相同的換算；鈣另外補到 Ca:P ≥ 1.2:1
+function menuSupps(D,isCat){
+  const out=[],dmKg=D.totalDMkg;
+  const rowP=D.compRows.find(r=>r.k==='磷(mg)');
+  // 磷（成長／繁殖期標準高時，以磷酸氫鈣補足，同時提供鈣）
+  let pAfter=rowP?rowP.actual:0,caFromP=0;
+  if(rowP&&rowP.corrMin&&rowP.actual<rowP.corrMin*0.99){
+    const f=MENU_FALLBACK['磷(mg)'],dose=(rowP.corrMin-rowP.actual)*dmKg/f.pur;
+    pAfter=rowP.corrMin;caFromP=dose*f.ca;
+    out.push({name:f.cmp,perDay:dose,unit:'mg',note:f.nt,key:'磷(mg)'});
+  }
+  D.compRows.forEach(r=>{
+    if(r.k==='磷(mg)')return;
+    const s=D.SUPP[r.k]||MENU_EXTRA_SUPP[r.k]||MENU_FALLBACK[r.k];if(!s||!r.corrMin)return;
+    let target=r.corrMin,actual=r.actual;
+    if(r.k==='鈣(mg)'){
+      actual+=caFromP/dmKg;
+      target=Math.max(target,1.2*pAfter);
+      if(r.maxStd)target=Math.min(target,r.maxStd*0.95);
+    }
+    if(actual>=target*0.99)return;   // 差距 <1% 視為已足夠，不另列補充
+    const gap=(target-actual)*dmKg;
+    let amt,unit;
+    if(s.iu){amt=gap;unit='IU';}
+    else if(s.ug){amt=gap/s.pur;unit='mg';}
+    else if(s.oil){amt=gap/s.pur/900;unit='mL';}
+    else{amt=gap/s.pur;unit='mg';}
+    out.push({name:s.cmp,perDay:amt,unit,note:s.nt,key:r.k});
+  });
+  if(isCat)out.push({name:'牛磺酸 Taurine',perDay:2000*dmKg,unit:'mg',note:'AAFCO 貓濕食最低 2,000 mg/kgDM；資料庫無牛磺酸數據，未扣除食材本身含量',key:'taurine'});
+  return out;
+}
+function menuFmt(v,unit){
+  if(unit==='mg'){
+    if(v<1)return (v*1000).toFixed(v*1000>=10?0:1)+' µg';
+    return v>=100?v.toFixed(0)+' mg':v>=10?v.toFixed(1)+' mg':v.toFixed(2)+' mg';
+  }
+  if(unit==='IU')return v.toFixed(0)+' IU';
+  return v.toFixed(2)+' '+unit;
+}
+function menuBuild(){
+  const sp=document.getElementById('petSpecies').value,stg=document.getElementById('petStage').value;
+  const stage=(stg==='growth'||stg==='pregnancy'||stg==='lactation')?'growth':'adult';
+  const opts={stage,source:'AAFCO'},std=menuStdOf(sp,stage,'AAFCO'),isCat=sp==='cat';
+  const meals=getMeals(),der=currentDER;
+  const menus=[];
+  (MENU_DEFS[sp]||[]).forEach(def=>{
+    const sol=menuSolve(def,{der,std,isCat});if(!sol)return;
+    const grams=sol.grams.map(menuRound);
+    const D=menuEvalFull(sol.foods,grams,opts);if(!D)return;
+    const supps=menuSupps(D,isCat);
+    const rows=D.compRows.filter(r=>r.status!=='N/D');
+    const unmet=rows.filter(r=>(MENU_SUPPK.has(r.k)||MENU_FALLBACK[r.k])?(r.maxStd&&r.actual>r.maxStd):r.status!=='PASS').map(r=>r.label);
+    menus.push({def,items:def.items.map((it,i)=>({id:it[0],label:it[4],g:grams[i]})),supps,
+      kcal:D.totalPme,total:rows.length,met:rows.length-unmet.length,unmet,
+      pP:D.nutrTotals['粗蛋白(g)']*3.5/D.totalPme*100,fP:D.nutrTotals['粗脂肪(g)']*8.5/D.totalPme*100});
+  });
+  return {menus,meals,der,sp,stage};
+}
+let _menuTimer=null;
+function scheduleMenus(){clearTimeout(_menuTimer);_menuTimer=setTimeout(renderMenus,250);}
+function renderMenus(){
+  const card=document.getElementById('menuCard');
+  if(!(currentDER>0)){card.style.display='none';return;}
+  const R=menuBuild();window.__menus=R.menus;
+  const sp=R.sp,stgTxt=R.stage==='growth'?'成長／繁殖期':'成年維持期';
+  document.getElementById('menuSub').textContent='依 DER '+R.der.toFixed(0)+' kcal/日、'+(sp==='dog'?'犬':'貓')+stgTxt+'、AAFCO 標準計算；每日 '+R.meals+' 餐，克數為生重（可食部分）';
+  document.getElementById('menuList').innerHTML=R.menus.map((m,i)=>{
+    const full=m.unmet.length===0;
+    const ing=m.items.map(it=>'<tr><td>'+it.label+'</td><td>'+it.g+' g</td><td>'+(it.g/R.meals).toFixed(it.g/R.meals>=20?0:1)+' g</td></tr>').join('');
+    const sup=m.supps.length?m.supps.map(s=>'<tr><td>'+s.name+'</td><td>'+menuFmt(s.perDay,s.unit)+'</td><td>'+menuFmt(s.perDay/R.meals,s.unit)+'</td></tr>').join(''):'<tr><td colspan="3">無需額外補充</td></tr>';
+    return '<details class="menu-item"'+(i===0?' open':'')+'><summary><div><div class="menu-title">'+(i+1)+'. '+m.def.name+'</div><div class="menu-sub">'+m.def.sub+'｜約 '+m.kcal.toFixed(0)+' kcal｜蛋白 '+m.pP.toFixed(0)+'% 脂肪 '+m.fP.toFixed(0)+'% 能量</div></div>'
+      +'<span class="menu-badge'+(full?'':' warn')+'">'+(full?'符合 '+m.met+'/'+m.total+' 項':m.met+'/'+m.total+' 項')+'</span></summary>'
+      +'<div class="menu-body"><div class="menu-h">食材</div><table class="menu-tbl"><tr><th>食材</th><th>每日</th><th>每餐</th></tr>'+ing+'</table>'
+      +'<div class="menu-h">需補充的營養素</div><table class="menu-tbl"><tr><th>補充劑</th><th>每日</th><th>每餐</th></tr>'+sup+'</table>'
+      +(full?'':'<div class="menu-note">食材與補充劑尚無法補足：'+m.unmet.join('、')+'</div>')
+      +'<button class="menu-btn" onclick="loadMenu('+i+')">載入食材分頁（每餐份量）</button></div></details>';
+  }).join('');
+  document.getElementById('menuFoot').innerHTML='所列營養標準為本系統已涵蓋的蛋白質、胺基酸、脂肪酸、礦物質與維生素；碘、硒、膽鹼、泛酸、生物素等未納入，建議搭配寵物專用綜合營養補充品。肉類、魚、蛋、內臟請完全煮熟並去骨，不加鹽與調味料。微量補充劑難以單獨秤量，實務上可改用寵物專用營養補充品，並請由獸醫師或寵物營養師確認。';
+  card.style.display='block';
+}
+function loadMenu(i){
+  const m=window.__menus&&window.__menus[i];if(!m)return;
+  const meals=getMeals();
+  cart=[];
+  m.items.forEach(it=>{addToCart(it.id);const c=cart.find(x=>x.id===it.id);if(c){c.grams=Math.round(it.g/meals*10)/10;}});
+  renderCart();calcME();updateCompare();updateTopInfo();
+  switchTab('search',document.querySelector('.tab[onclick*="\'search\'"]'));
+}
+
 function switchTab(name,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -24673,7 +24875,7 @@ function calcRER(){
   const ga=document.getElementById('growthAge').value;
   const pw=document.getElementById('pregnancyWeek').value;
   const lw=document.getElementById('lactationWeek').value;
-  if(!wt||wt<=0){currentDER=0;document.getElementById('rerCard').style.display='none';updateTopInfo();return;}
+  if(!wt||wt<=0){currentDER=0;document.getElementById('rerCard').style.display='none';document.getElementById('menuCard').style.display='none';updateTopInfo();return;}
   const rer=70*Math.pow(wt,0.75);
   let factor=1.6,desc='',note='',extra=0,useExtra=false;
   if(stage==='adult'){
@@ -24711,6 +24913,7 @@ function calcRER(){
   document.getElementById('derVal').textContent=der.toFixed(0);
   document.getElementById('rerDesc').textContent='依據：'+desc;
   {const m=getMeals();document.getElementById('mealDesc').textContent='每日 '+m+' 餐，每餐約 '+(der/m).toFixed(0)+' kcal';}
+  scheduleMenus();
   document.getElementById('rerNote').innerHTML=note;
   updateCompare();updateTopInfo();
 }
@@ -25618,8 +25821,8 @@ async function generateAAFCOReport() {
     } else if (s.oil) {
       // 亞麻油酸：gapPerMeal 單位為 mg/meal → 換算 mL
       const dose = gapPerMeal / s.pur / 900; // mL/meal
-      ds  = (dose * 1000).toFixed(4)  + ' mL';
-      dds = (dose * 1000 * MEALS).toFixed(4)  + ' mL';
+      ds  = dose.toFixed(4)  + ' mL';
+      dds = (dose * MEALS).toFixed(4)  + ' mL';
     } else {
       // 一般礦物質/維生素（mg）：gapPerMeal 單位為 mg/meal
       // 鈣(mg)的 k 是 mg/kgDM，gapPerKgDM 是 mg/kgDM，× mealDMkg(kg) = mg/meal ✓
